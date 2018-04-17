@@ -201,12 +201,14 @@ var (
 		"router",
 		"sample-templates",
 		"persistent-volumes",
+		"ansible-service-broker",
 		"service-catalog",
 		"template-service-broker",
 		"web-console",
 	)
 
 	componentsDisabledByDefault = sets.NewString(
+		"ansible-service-broker",
 		"service-catalog",
 		"template-service-broker")
 )

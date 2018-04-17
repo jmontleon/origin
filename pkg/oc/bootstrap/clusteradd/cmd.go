@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/components/ansible-service-broker"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/components/default-imagestreams"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/components/registry"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/components/router"
@@ -48,6 +49,9 @@ var (
 
 // availableComponents lists the components that are available for installation.
 var availableComponents = map[string]func(ctx componentinstall.Context) componentinstall.Component{
+	"ansible-service-broker": func(ctx componentinstall.Context) componentinstall.Component {
+		return &ansible_service_broker.AnsibleServiceBrokerComponentOptions{InstallContext: ctx}
+	},
 	"centos-imagestreams": func(ctx componentinstall.Context) componentinstall.Component {
 		return &default_imagestreams.CentosImageStreamsComponentOptions{InstallContext: ctx}
 	},
