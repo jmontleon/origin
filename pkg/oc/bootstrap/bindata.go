@@ -38,6 +38,7 @@
 // examples/prometheus/prometheus.yaml
 // examples/service-catalog/service-catalog-rbac.yaml
 // examples/service-catalog/service-catalog.yaml
+// install/automationservicebroker/deploy-automation-broker-apb.yaml
 // install/etcd/etcd.yaml
 // install/kube-apiserver/apiserver.yaml
 // install/kube-controller-manager/kube-controller-manager.yaml
@@ -16288,6 +16289,68 @@ func examplesServiceCatalogServiceCatalogYaml() (*asset, error) {
 	return a, nil
 }
 
+var _installAutomationservicebrokerDeployAutomationBrokerApbYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: automation-broker-apb
+objects:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: automation-broker-apb
+    namespace: "${NAMESPACE}"
+
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRoleBinding
+  metadata:
+    name: automation-broker-apb
+  roleRef:
+    name: cluster-admin
+    kind: ClusterRole
+    apiGroup: rbac.authorization.k8s.io
+  subjects:
+  - kind: ServiceAccount
+    name: automation-broker-apb
+    namespace: "${NAMESPACE}"
+
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: automation-broker-apb
+  spec:
+    backoffLimit: 5
+    activeDeadlineSeconds: 300
+    template:
+      spec:
+        restartPolicy: OnFailure
+        serviceAccount: automation-broker-apb
+        containers:
+        - image: docker.io/automationbroker/automation-broker-apb:latest
+          name: automation-broker-apb
+          args: [ "provision", "-e", "broker_name=automation-service-broker", "-e", "create_broker_namespace=true" ]
+
+parameters:
+- description: Namespace of the project that is being deploy
+  displayname: broker client cert key
+  name: NAMESPACE
+  value: "automation-broker-apb"
+`)
+
+func installAutomationservicebrokerDeployAutomationBrokerApbYamlBytes() ([]byte, error) {
+	return _installAutomationservicebrokerDeployAutomationBrokerApbYaml, nil
+}
+
+func installAutomationservicebrokerDeployAutomationBrokerApbYaml() (*asset, error) {
+	bytes, err := installAutomationservicebrokerDeployAutomationBrokerApbYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "install/automationservicebroker/deploy-automation-broker-apb.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _installEtcdEtcdYaml = []byte(`kind: Pod
 apiVersion: v1
 metadata:
@@ -18017,6 +18080,7 @@ var _bindata = map[string]func() (*asset, error){
 	"examples/prometheus/prometheus.yaml": examplesPrometheusPrometheusYaml,
 	"examples/service-catalog/service-catalog-rbac.yaml": examplesServiceCatalogServiceCatalogRbacYaml,
 	"examples/service-catalog/service-catalog.yaml": examplesServiceCatalogServiceCatalogYaml,
+	"install/automationservicebroker/deploy-automation-broker-apb.yaml": installAutomationservicebrokerDeployAutomationBrokerApbYaml,
 	"install/etcd/etcd.yaml": installEtcdEtcdYaml,
 	"install/kube-apiserver/apiserver.yaml": installKubeApiserverApiserverYaml,
 	"install/kube-controller-manager/kube-controller-manager.yaml": installKubeControllerManagerKubeControllerManagerYaml,
@@ -18134,6 +18198,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		}},
 	}},
 	"install": &bintree{nil, map[string]*bintree{
+		"automationservicebroker": &bintree{nil, map[string]*bintree{
+			"deploy-automation-broker-apb.yaml": &bintree{installAutomationservicebrokerDeployAutomationBrokerApbYaml, map[string]*bintree{}},
+		}},
 		"etcd": &bintree{nil, map[string]*bintree{
 			"etcd.yaml": &bintree{installEtcdEtcdYaml, map[string]*bintree{}},
 		}},
