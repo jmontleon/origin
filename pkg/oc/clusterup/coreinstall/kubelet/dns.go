@@ -6,8 +6,11 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/openshift/origin/pkg/oc/clusteradd/componentinstall"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
+	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
+	configapilatest "github.com/openshift/origin/pkg/cmd/server/apis/config/latest"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/tmpformac"
 )
 
@@ -32,14 +35,22 @@ func MakeKubeDNSConfig(existingNodeConfig string, basedir string) (string, error
 
 	// update some listen information to include starting the DNS server
 	nodeConfigFilename := path.Join(configDir, "node-config.yaml")
-	nodeConfig, err := componentinstall.ReadNodeConfig(nodeConfigFilename)
+	originalBytes, err := ioutil.ReadFile(nodeConfigFilename)
 	if err != nil {
 		return "", err
 	}
+	configObj, err := runtime.Decode(configapilatest.Codec, originalBytes)
+	if err != nil {
+		return "", err
+	}
+	nodeConfig := configObj.(*configapi.NodeConfig)
 	nodeConfig.DNSBindAddress = "0.0.0.0:53"
 	nodeConfig.DNSRecursiveResolvConf = "resolv.conf"
-
-	if err := componentinstall.WriteNodeConfig(nodeConfigFilename, nodeConfig); err != nil {
+	configBytes, err := configapilatest.WriteYAML(nodeConfig)
+	if err != nil {
+		return "", err
+	}
+	if err := ioutil.WriteFile(nodeConfigFilename, configBytes, 0644); err != nil {
 		return "", err
 	}
 
