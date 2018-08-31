@@ -88,7 +88,6 @@ func (opt KubeAPIServerStartConfig) MakeMasterConfig(dockerClient dockerhelper.I
 		return "", err
 	}
 	masterconfig := configObj.(*configapi.MasterConfig)
-	masterconfig.KubernetesMasterConfig.APIServerArguments["feature-gates"] = []string{"CustomResourceSubresources=true"}
 	configBytes, err := runtime.Encode(configapilatest.Codec, masterconfig)
 	if err != nil {
 		return "", err
