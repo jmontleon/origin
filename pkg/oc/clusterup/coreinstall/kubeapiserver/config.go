@@ -1,18 +1,20 @@
 package kubeapiserver
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/docker/docker/api/types"
 	"github.com/golang/glog"
-	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config/v1"
-	"github.com/openshift/origin/pkg/oc/clusteradd/componentinstall"
 
+	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
+	configapilatest "github.com/openshift/origin/pkg/cmd/server/apis/config/latest"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/dockerhelper"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/run"
 	"github.com/openshift/origin/pkg/oc/lib/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const KubeAPIServerDirName = "kube-apiserver"
@@ -77,30 +79,23 @@ func (opt KubeAPIServerStartConfig) MakeMasterConfig(dockerClient dockerhelper.I
 
 	// update some listen information to include starting the DNS server
 	masterconfigFilename := path.Join(masterDir, "master-config.yaml")
-	masterconfig, err := componentinstall.ReadMasterConfig(masterconfigFilename)
+	originalBytes, err := ioutil.ReadFile(masterconfigFilename)
 	if err != nil {
 		return "", err
 	}
-
-	addImagePolicyAdmission(&masterconfig.AdmissionConfig)
-
-	if err := componentinstall.WriteMasterConfig(masterconfigFilename, masterconfig); err != nil {
+	configObj, err := runtime.Decode(configapilatest.Codec, originalBytes)
+	if err != nil {
+		return "", err
+	}
+	masterconfig := configObj.(*configapi.MasterConfig)
+	masterconfig.KubernetesMasterConfig.APIServerArguments["feature-gates"] = []string{"CustomResourceSubresources=true"}
+	configBytes, err := runtime.Encode(configapilatest.Codec, masterconfig)
+	if err != nil {
+		return "", err
+	}
+	if err := ioutil.WriteFile(masterconfigFilename, configBytes, 0644); err != nil {
 		return "", err
 	}
 
 	return masterDir, nil
-}
-
-func addImagePolicyAdmission(admissionConfig *configapi.AdmissionConfig) {
-	// default openshift image policy admission
-	if admissionConfig.PluginConfig == nil {
-		admissionConfig.PluginConfig = map[string]*configapi.AdmissionPluginConfig{}
-	}
-	// Add default ImagePolicyConfig into openshift api master config
-	policyConfig := []byte(`{"kind":"ImagePolicyConfig","apiVersion":"v1","executionRules":[{"name":"execution-denied",
-"onResources":[{"resource":"pods"},{"resource":"builds"}],"reject":true,"matchImageAnnotations":[{"key":"images.openshift.io/deny-execution",
-"value":"true"}],"skipOnResolutionFailure":true}]}`)
-	admissionConfig.PluginConfig["openshift.io/ImagePolicy"] = &configapi.AdmissionPluginConfig{
-		Configuration: runtime.RawExtension{Raw: policyConfig},
-	}
 }

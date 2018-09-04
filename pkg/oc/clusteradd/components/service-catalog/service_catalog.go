@@ -1,6 +1,8 @@
 package service_catalog
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/url"
 	"path"
 
@@ -8,11 +10,14 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	rbacv1helpers "k8s.io/kubernetes/pkg/apis/rbac/v1"
 	"k8s.io/kubernetes/pkg/registry/rbac/reconciliation"
 
+	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
+	configapilatest "github.com/openshift/origin/pkg/cmd/server/apis/config/latest"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
 	"github.com/openshift/origin/pkg/oc/clusteradd/componentinstall"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/kubeapiserver"
@@ -58,12 +63,18 @@ func (c *ServiceCatalogComponentOptions) Install(dockerClient dockerhelper.Inter
 	imageTemplate.Format = c.InstallContext.ImageFormat()
 	imageTemplate.Latest = false
 
-	masterConfigPath := path.Join(c.InstallContext.BaseDir(), kubeapiserver.KubeAPIServerDirName, "master-config.yaml")
-	masterConfig, err := componentinstall.ReadMasterConfig(masterConfigPath)
+	configBytes, err := ioutil.ReadFile(path.Join(c.InstallContext.BaseDir(), kubeapiserver.KubeAPIServerDirName, "master-config.yaml"))
 	if err != nil {
 		return err
 	}
-
+	configObj, err := runtime.Decode(configapilatest.Codec, configBytes)
+	if err != nil {
+		return err
+	}
+	masterConfig, ok := configObj.(*configapi.MasterConfig)
+	if !ok {
+		return fmt.Errorf("the %#v is not MasterConfig", configObj)
+	}
 	masterURL, err := url.Parse(masterConfig.MasterPublicURL)
 	if err != nil {
 		return err
